@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Giikin\HyperfLogViewer;
+namespace HyperfLog;
 
 class ConfigProvider
 {

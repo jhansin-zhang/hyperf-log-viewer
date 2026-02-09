@@ -1,5 +1,5 @@
 {
-    "name": "giikin/hyperf-log-viewer",
+    "name": "jhansin-zhang/hyperf-log-viewer",
     "description": "A log viewer component for Hyperf framework with aggregation support",
     "license": "MIT",
     "type": "library",
@@ -11,12 +11,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Giikin\\HyperfLogViewer\\": "src/"
+            "HyperfLog\\": "src/"
         }
     },
     "extra": {
         "hyperf": {
-            "config": "Giikin\\HyperfLogViewer\\ConfigProvider"
+            "config": "HyperfLog\\ConfigProvider"
         }
     },
     "config": {
