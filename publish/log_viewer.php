@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 return [
-    // 路由前缀
-    'route_prefix' => '/log_view',
-
     // 日志文件目录
     'log_path' => BASE_PATH . '/runtime/logs',
 
@@ -20,7 +17,4 @@ return [
 
     // 缓存有效期（秒），今天的日志用此值，历史日志用 10 分钟
     'cache_expiry' => 60,
-
-    // 中间件（如需鉴权可在此添加）
-    'middleware' => [],
 ];

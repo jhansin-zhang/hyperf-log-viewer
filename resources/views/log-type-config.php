@@ -264,29 +264,37 @@
                         <input class="fg-input" type="text" id="formIcon" placeholder="📋" style="text-align: center; font-size: 20px; padding: 7px;">
                     </div>
                     <div class="fg">
-                        <label class="fg-label">文件匹配</label>
-                        <input class="fg-input" type="text" id="formFilePattern" placeholder="自动使用通道名">
-                    </div>
-                </div>
-                <div class="fg-row">
-                    <div class="fg">
-                        <label class="fg-label">聚合正则</label>
-                        <input class="fg-input" type="text" id="formAggPattern" placeholder="可选">
-                    </div>
-                    <div class="fg">
                         <label class="fg-label">Grep 关键字</label>
-                        <input class="fg-input" type="text" id="formGrepPattern" placeholder="可选">
+                        <input class="fg-input" type="text" id="formGrepPattern" placeholder="可选，加速日志扫描">
                     </div>
                 </div>
                 <div class="fg">
                     <label class="fg-label">成功阶段标识</label>
-                    <input class="fg-input" type="text" id="formSuccessStage" placeholder="可选">
+                    <input class="fg-input" type="text" id="formSuccessStage" placeholder="可选，用于判断任务是否完成">
                 </div>
                 <div class="fg">
                     <label class="fg-label">阶段定义</label>
                     <div class="se-wrap">
                         <div class="se-list" id="stageList"></div>
                         <button class="se-add" type="button" onclick="addStageRow()">+ 添加阶段</button>
+                    </div>
+                </div>
+                <!-- 极少使用的字段，默认隐藏 -->
+                <button class="adv-toggle" type="button" onclick="toggleMore(this)" style="margin-top: 10px;">
+                    <span class="arrow">▶</span> 更多选项
+                </button>
+                <div class="adv-section" id="moreSection">
+                    <div class="fg-row">
+                        <div class="fg">
+                            <label class="fg-label">文件匹配</label>
+                            <input class="fg-input" type="text" id="formFilePattern" placeholder="默认同通道名">
+                            <div class="fg-hint">日志文件名包含的关键字，留空自动使用通道名</div>
+                        </div>
+                        <div class="fg">
+                            <label class="fg-label">聚合正则</label>
+                            <input class="fg-input" type="text" id="formAggPattern" placeholder="备选方案，通常不需要">
+                            <div class="fg-hint">当 context 中无聚合字段时，从日志全文提取</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -314,15 +322,11 @@
 
             <!-- 粘贴 JSON 区域 -->
             <div id="importPasteZone">
-                <textarea class="import-textarea" id="importJsonText" placeholder='粘贴 JSON 数组，例如：
-[
-    {
-        "name": "落地页任务",
-        "log_channel": "landing_page",
-        "aggregate_field": "task_id",
-        ...
-    }
-]'></textarea>
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                    <button class="cfg-io-btn" onclick="fillTemplate('simple')" style="font-size: 12px; padding: 5px 12px;">📄 基础模板</button>
+                    <button class="cfg-io-btn" onclick="fillTemplate('full')" style="font-size: 12px; padding: 5px 12px; margin-left: 6px;">📑 完整模板</button>
+                </div>
+                <textarea class="import-textarea" id="importJsonText" placeholder='粘贴 JSON 数组，或点击上方「模板」按钮快速填充示例格式'></textarea>
             </div>
 
             <!-- 文件上传区域 -->
@@ -366,6 +370,11 @@ function toggleAdvanced(btn) {
     document.getElementById('advSection').classList.toggle('open');
 }
 
+function toggleMore(btn) {
+    btn.classList.toggle('open');
+    document.getElementById('moreSection').classList.toggle('open');
+}
+
 function openAddModal() {
     document.getElementById('modalTitle').textContent = '添加日志类型';
     document.getElementById('formId').value = '';
@@ -380,9 +389,12 @@ function openAddModal() {
     document.getElementById('formGrepPattern').value = '';
     document.getElementById('formSuccessStage').value = '';
     document.getElementById('stageList').innerHTML = '';
-    // 收起高级设置
-    document.querySelector('.adv-toggle').classList.remove('open');
+    // 收起高级设置 & 更多选项
+    document.querySelector('#modalOverlay .adv-toggle').classList.remove('open');
     document.getElementById('advSection').classList.remove('open');
+    var moreBtns = document.querySelectorAll('#advSection .adv-toggle');
+    if (moreBtns.length > 0) moreBtns[0].classList.remove('open');
+    document.getElementById('moreSection').classList.remove('open');
     document.getElementById('modalOverlay').classList.add('active');
 }
 
@@ -401,7 +413,8 @@ function editType(data) {
     document.getElementById('formSuccessStage').value = data.success_stage || '';
     var stageList = document.getElementById('stageList');
     stageList.innerHTML = '';
-    var hasAdv = data.aggregate_pattern || data.grep_pattern || data.success_stage || (data.stages && Object.keys(data.stages).length > 0);
+    var hasAdv = data.grep_pattern || data.success_stage || (data.stages && Object.keys(data.stages).length > 0) || data.aggregate_pattern || data.file_pattern;
+    var hasMore = data.aggregate_pattern || (data.file_pattern && data.file_pattern !== data.log_channel);
     if (data.stages) {
         for (var k in data.stages) {
             if (data.stages.hasOwnProperty(k)) {
@@ -410,10 +423,17 @@ function editType(data) {
         }
     }
     // 如果有高级字段内容，自动展开
-    var advBtn = document.querySelector('.adv-toggle');
+    var advBtn = document.querySelector('#modalOverlay .adv-toggle');
     var advSec = document.getElementById('advSection');
     if (hasAdv) { advBtn.classList.add('open'); advSec.classList.add('open'); }
     else { advBtn.classList.remove('open'); advSec.classList.remove('open'); }
+    // 如果有更多选项字段内容，自动展开
+    var moreBtns = document.querySelectorAll('#advSection .adv-toggle');
+    var moreSec = document.getElementById('moreSection');
+    if (moreBtns.length > 0) {
+        if (hasMore) { moreBtns[0].classList.add('open'); moreSec.classList.add('open'); }
+        else { moreBtns[0].classList.remove('open'); moreSec.classList.remove('open'); }
+    }
     document.getElementById('modalOverlay').classList.add('active');
 }
 
@@ -632,6 +652,52 @@ function submitImport() {
 
 function exportTypes() {
     window.open(basePath + '/config/export', '_blank');
+}
+
+// ==================== 导入模板 ====================
+
+var IMPORT_TEMPLATES = {
+    simple: [
+        {
+            "name": "示例任务",
+            "log_channel": "example_channel",
+            "aggregate_field": "task_id"
+        }
+    ],
+    full: [
+        {
+            "name": "示例任务",
+            "icon": "🎨",
+            "log_channel": "example_channel",
+            "aggregate_field": "task_id",
+            "grep_pattern": "TASK-",
+            "stages": {
+                "task_create": {
+                    "step": 1,
+                    "name": "任务创建",
+                    "color": "#3F51B5"
+                },
+                "processing": {
+                    "step": 2,
+                    "name": "处理中",
+                    "color": "#FF9800"
+                },
+                "task_complete": {
+                    "step": 3,
+                    "name": "任务完成",
+                    "color": "#4CAF50"
+                }
+            },
+            "success_stage": "task_complete"
+        }
+    ]
+};
+
+function fillTemplate(type) {
+    var textarea = document.getElementById('importJsonText');
+    var tpl = IMPORT_TEMPLATES[type] || IMPORT_TEMPLATES.simple;
+    textarea.value = JSON.stringify(tpl, null, 4);
+    validateImportJson(textarea.value);
 }
 </script>
 

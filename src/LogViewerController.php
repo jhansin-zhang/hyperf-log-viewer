@@ -122,7 +122,6 @@ class LogViewerController
     public function exportLogTypes(): PsrResponseInterface
     {
         $logTypes = $this->logTypeManager->getAll();
-        $json = json_encode($logTypes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         return $this->response->json($logTypes)
             ->withHeader('Content-Disposition', 'attachment; filename="log-viewer-types-' . date('Ymd') . '.json"');
@@ -264,6 +263,8 @@ class LogViewerController
 
     protected function loadLogContent(string $file, string $search, int $page): array
     {
+        // 安全检查：防止路径遍历攻击
+        $file = basename($file);
         $filePath = $this->logPath . '/' . $file;
         if (!file_exists($filePath) || !is_file($filePath)) {
             return ['logs' => [], 'total' => 0, 'totalPage' => 0];
@@ -541,7 +542,8 @@ class LogViewerController
         if (PHP_OS_FAMILY === 'Windows') {
             $cmd = "findstr /C:{$escapedPattern} {$escapedPath}";
         } else {
-            $cmd = "grep {$escapedPattern} {$escapedPath}";
+            // 使用 -F 固定字符串匹配，避免正则元字符误匹配
+            $cmd = "grep -F {$escapedPattern} {$escapedPath}";
         }
 
         $output = [];
