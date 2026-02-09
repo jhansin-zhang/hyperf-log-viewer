@@ -37,11 +37,33 @@
         .cfg-btn-del { color: #FF3B30; }
         .cfg-btn-del:hover { background: #ffebee; }
 
-        /* 头部 + 添加按钮 */
+        /* 头部 + 操作按钮 */
         .cfg-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; margin-bottom: 10px; }
+        .cfg-header-actions { display: flex; gap: 8px; align-items: center; }
         .cfg-add-btn { padding: 8px 18px; border: none; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; transition: all .15s; }
         .cfg-add-btn:hover { opacity: .9; }
         .cfg-add-btn:active { transform: scale(.96); opacity: .85; }
+        .cfg-io-btn { padding: 8px 16px; border: .5px solid #d1d1d6; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; background: #fff; color: #667eea; transition: all .15s; }
+        .cfg-io-btn:hover { background: #f5f5f7; border-color: #667eea; }
+        .cfg-io-btn:active { transform: scale(.96); }
+
+        /* 导入弹窗 */
+        .import-zone { border: 2px dashed #d1d1d6; border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; position: relative; margin-bottom: 16px; }
+        .import-zone:hover, .import-zone.dragover { border-color: #667eea; background: rgba(102,126,234,.04); }
+        .import-zone-icon { font-size: 32px; margin-bottom: 8px; opacity: .6; }
+        .import-zone-text { font-size: 14px; color: #86868b; }
+        .import-zone-text a { color: #667eea; cursor: pointer; text-decoration: underline; }
+        .import-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .import-textarea { width: 100%; height: 220px; padding: 12px 14px; border: .5px solid #d1d1d6; border-radius: 10px; font-size: 13px; font-family: 'Consolas', 'Monaco', monospace; color: #1d1d1f; background: #fafafa; box-sizing: border-box; resize: vertical; transition: border-color .2s; }
+        .import-textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3.5px rgba(102,126,234,.2); background: #fff; }
+        .import-textarea::placeholder { color: #c7c7cc; }
+        .import-tabs { display: flex; gap: 0; margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: .5px solid #d1d1d6; }
+        .import-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; background: #f5f5f7; color: #86868b; border: none; transition: all .15s; }
+        .import-tab.active { background: #667eea; color: #fff; }
+        .import-tab:hover:not(.active) { background: #e8e8ed; }
+        .import-preview { margin-top: 12px; padding: 12px 14px; background: #f0f8f0; border-radius: 10px; font-size: 13px; color: #2e7d32; display: none; }
+        .import-preview.error { background: #fef0f0; color: #c62828; }
+        .import-preview.show { display: block; }
 
         /* 使用说明 */
         .help-item { padding: 14px 20px; font-size: 13px; color: #1d1d1f; line-height: 1.65; }
@@ -142,7 +164,11 @@
     <!-- 区域：已配置类型 -->
     <div class="cfg-header">
         <div class="sec-title">已配置的日志类型</div>
-        <button class="cfg-add-btn" onclick="openAddModal()">+ 添加类型</button>
+        <div class="cfg-header-actions">
+            <button class="cfg-io-btn" onclick="openImportModal()">📥 导入</button>
+            <button class="cfg-io-btn" onclick="exportTypes()">📤 导出</button>
+            <button class="cfg-add-btn" onclick="openAddModal()">+ 添加类型</button>
+        </div>
     </div>
     
     <div class="cfg-card">
@@ -268,6 +294,56 @@
         <div class="modal-foot">
             <button class="m-btn m-btn-cancel" onclick="closeModal()">取消</button>
             <button class="m-btn m-btn-save" onclick="saveType()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 导入弹窗 ========== -->
+<div class="modal-overlay" id="importOverlay">
+    <div class="modal" style="width: 580px;">
+        <div class="modal-head">
+            <span class="modal-title">📥 导入日志类型</span>
+            <button class="modal-x" onclick="closeImportModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- 切换：文件上传 / 粘贴JSON -->
+            <div class="import-tabs">
+                <button class="import-tab active" onclick="switchImportTab(this, 'paste')">📋 粘贴 JSON</button>
+                <button class="import-tab" onclick="switchImportTab(this, 'file')">📁 上传文件</button>
+            </div>
+
+            <!-- 粘贴 JSON 区域 -->
+            <div id="importPasteZone">
+                <textarea class="import-textarea" id="importJsonText" placeholder='粘贴 JSON 数组，例如：
+[
+    {
+        "name": "落地页任务",
+        "log_channel": "landing_page",
+        "aggregate_field": "task_id",
+        ...
+    }
+]'></textarea>
+            </div>
+
+            <!-- 文件上传区域 -->
+            <div id="importFileZone" style="display: none;">
+                <div class="import-zone" id="dropZone">
+                    <input type="file" accept=".json" id="importFile" onchange="handleImportFile(this)">
+                    <div class="import-zone-icon">📄</div>
+                    <div class="import-zone-text">拖拽 JSON 文件到此处，或 <a>点击选择文件</a></div>
+                </div>
+            </div>
+
+            <!-- 预览/校验结果 -->
+            <div class="import-preview" id="importPreview"></div>
+
+            <div class="fg-hint" style="margin-top: 12px;">
+                支持导入 JSON 数组（多个类型）或单个 JSON 对象。已存在的类型（相同 ID 或 mode）将被覆盖更新。
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="m-btn m-btn-cancel" onclick="closeImportModal()">取消</button>
+            <button class="m-btn m-btn-save" onclick="submitImport()">确认导入</button>
         </div>
     </div>
 </div>
@@ -430,6 +506,133 @@ function deleteType(id, name) {
 document.getElementById('modalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
+
+// ==================== 导入/导出 ====================
+
+function openImportModal() {
+    document.getElementById('importJsonText').value = '';
+    document.getElementById('importFile').value = '';
+    var preview = document.getElementById('importPreview');
+    preview.className = 'import-preview';
+    preview.textContent = '';
+    document.getElementById('importOverlay').classList.add('active');
+}
+
+function closeImportModal() {
+    document.getElementById('importOverlay').classList.remove('active');
+}
+
+document.getElementById('importOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeImportModal();
+});
+
+function switchImportTab(btn, tab) {
+    document.querySelectorAll('.import-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('importPasteZone').style.display = (tab === 'paste') ? 'block' : 'none';
+    document.getElementById('importFileZone').style.display = (tab === 'file') ? 'block' : 'none';
+}
+
+function handleImportFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var text = e.target.result;
+        document.getElementById('importJsonText').value = text;
+        // 切换到粘贴视图展示内容
+        document.querySelectorAll('.import-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.import-tab')[0].classList.add('active');
+        document.getElementById('importPasteZone').style.display = 'block';
+        document.getElementById('importFileZone').style.display = 'none';
+        validateImportJson(text);
+    };
+    reader.readAsText(file);
+}
+
+function validateImportJson(text) {
+    var preview = document.getElementById('importPreview');
+    try {
+        var data = JSON.parse(text);
+        if (!Array.isArray(data)) {
+            if (data.name || data.id) {
+                data = [data];
+            } else {
+                preview.className = 'import-preview error show';
+                preview.textContent = '❌ 无效格式：需要 JSON 数组或包含 name 字段的对象';
+                return null;
+            }
+        }
+        var names = data.map(function(d) { return d.name || '未命名'; });
+        preview.className = 'import-preview show';
+        preview.innerHTML = '✅ 检测到 <strong>' + data.length + '</strong> 个日志类型：' + names.join('、');
+        return data;
+    } catch (e) {
+        preview.className = 'import-preview error show';
+        preview.textContent = '❌ JSON 解析失败：' + e.message;
+        return null;
+    }
+}
+
+// 粘贴区域实时校验
+document.getElementById('importJsonText').addEventListener('input', function() {
+    var text = this.value.trim();
+    if (text) validateImportJson(text);
+    else {
+        var preview = document.getElementById('importPreview');
+        preview.className = 'import-preview';
+        preview.textContent = '';
+    }
+});
+
+// 拖拽支持
+var dropZone = document.getElementById('dropZone');
+if (dropZone) {
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', function() { this.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        var file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith('.json')) {
+            document.getElementById('importFile').files = e.dataTransfer.files;
+            handleImportFile(document.getElementById('importFile'));
+        } else {
+            showToast('请拖入 .json 文件', 'error');
+        }
+    });
+}
+
+function submitImport() {
+    var text = document.getElementById('importJsonText').value.trim();
+    if (!text) {
+        showToast('请输入或上传 JSON 数据', 'error');
+        return;
+    }
+    var data = validateImportJson(text);
+    if (!data) return;
+
+    fetch(basePath + '/config/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: text
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.success) {
+            showToast(res.message || '导入成功');
+            closeImportModal();
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            showToast(res.message || '导入失败', 'error');
+        }
+    })
+    .catch(function(e) { showToast('请求失败: ' + e.message, 'error'); });
+}
+
+function exportTypes() {
+    window.open(basePath + '/config/export', '_blank');
+}
 </script>
 
 </body>

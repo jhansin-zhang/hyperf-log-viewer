@@ -82,6 +82,53 @@ class LogViewerController
     }
 
     /**
+     * 导入日志类型（AJAX）
+     */
+    #[PostMapping(path: 'config/import')]
+    public function importLogTypes(): PsrResponseInterface
+    {
+        $body = (string) $this->request->getBody();
+        $data = json_decode($body, true);
+
+        if ($data === null) {
+            return $this->response->json(['success' => false, 'message' => '无效的 JSON 格式']);
+        }
+
+        // 支持传入单个对象或数组
+        if (isset($data['id']) || isset($data['name'])) {
+            $data = [$data];
+        }
+
+        if (empty($data) || !is_array($data)) {
+            return $this->response->json(['success' => false, 'message' => '无效的数据格式，需要 JSON 数组']);
+        }
+
+        try {
+            $result = $this->logTypeManager->import($data);
+            $msg = sprintf('导入完成：新增 %d 个，更新 %d 个', $result['imported'], $result['updated']);
+            if ($result['skipped'] > 0) {
+                $msg .= sprintf('，跳过 %d 个（缺少必填字段）', $result['skipped']);
+            }
+            return $this->response->json(['success' => true, 'message' => $msg, 'data' => $result]);
+        } catch (\Exception $e) {
+            return $this->response->json(['success' => false, 'message' => '导入失败: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 导出所有日志类型（JSON 文件下载）
+     */
+    #[GetMapping(path: 'config/export')]
+    public function exportLogTypes(): PsrResponseInterface
+    {
+        $logTypes = $this->logTypeManager->getAll();
+        $json = json_encode($logTypes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        return $this->response->json($logTypes)
+            ->withHeader('Content-Disposition', 'attachment; filename="log-viewer-types-' . date('Ymd') . '.json"');
+    }
+
+    /**
      * 删除日志类型（AJAX）
      */
     #[PostMapping(path: 'config/delete')]

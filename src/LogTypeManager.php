@@ -129,6 +129,74 @@ class LogTypeManager
     }
 
     /**
+     * 批量导入日志类型（新增或覆盖更新）
+     */
+    public function import(array $items): array
+    {
+        $types = $this->getAll();
+        $imported = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($items as $item) {
+            $name = trim($item['name'] ?? '');
+            $mode = trim($item['mode'] ?? '');
+            $logChannel = trim($item['log_channel'] ?? '');
+            $aggregateField = trim($item['aggregate_field'] ?? '');
+
+            if (empty($name) || empty($logChannel) || empty($aggregateField)) {
+                $skipped++;
+                continue;
+            }
+
+            // 如果没有 mode，从 log_channel 自动派生
+            if (empty($mode)) {
+                $mode = str_replace('_', '-', $logChannel);
+            }
+
+            $newType = [
+                'id' => trim($item['id'] ?? $mode),
+                'name' => $name,
+                'icon' => trim($item['icon'] ?? '📋'),
+                'mode' => $mode,
+                'log_channel' => $logChannel,
+                'file_pattern' => trim($item['file_pattern'] ?? $logChannel),
+                'aggregate_field' => $aggregateField,
+                'aggregate_pattern' => trim($item['aggregate_pattern'] ?? ''),
+                'grep_pattern' => trim($item['grep_pattern'] ?? ''),
+                'stages' => is_array($item['stages'] ?? null) ? $item['stages'] : [],
+                'success_stage' => trim($item['success_stage'] ?? ''),
+                'created_at' => $item['created_at'] ?? date('Y-m-d H:i:s'),
+            ];
+
+            // 按 id 或 mode 查找已存在的记录
+            $existingIndex = null;
+            foreach ($types as $idx => $t) {
+                if ($t['id'] === $newType['id'] || $t['mode'] === $newType['mode']) {
+                    $existingIndex = $idx;
+                    break;
+                }
+            }
+
+            if ($existingIndex !== null) {
+                $types[$existingIndex] = $newType;
+                $updated++;
+            } else {
+                $types[] = $newType;
+                $imported++;
+            }
+        }
+
+        $this->saveAll($types);
+
+        return [
+            'imported' => $imported,
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ];
+    }
+
+    /**
      * 删除日志类型
      */
     public function delete(string $id): void
