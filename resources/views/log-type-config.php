@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>日志类型配置</title>
+    <title>日志类型管理</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <style>
@@ -148,7 +148,7 @@
 <!-- 页面头部 -->
 <div class="page-header">
     <h1>📋 日志查看器</h1>
-    <p>配置管理</p>
+    <p>日志类型管理</p>
 </div>
 
 <!-- Tab 导航 -->
@@ -157,7 +157,7 @@
     <?php foreach ($logTypes as $lt): ?>
         <a class="nav-link" href="<?= $_basePath ?>?mode=<?= htmlspecialchars($lt['mode']) ?>"><?= htmlspecialchars(($lt['icon'] ?? '📋') . ' ' . $lt['name']) ?></a>
     <?php endforeach; ?>
-    <a class="nav-link active" href="<?= $_basePath ?>/config" style="margin-left: auto;">⚙️ 配置</a>
+    <a class="nav-link active" href="<?= $_basePath ?>/config" style="margin-left: auto;">⚙️ 类型管理</a>
 </div>
 
 <div class="cfg-wrap">
@@ -209,12 +209,11 @@
     <!-- 区域：使用说明 -->
     <div class="sec-title">使用说明</div>
     <div class="cfg-card">
-        <div class="help-item"><span class="help-num">1</span><strong>日志通道</strong> — 对应日志 JSON 中 <code>channel</code> 字段，如 <code>landing_page</code></div>
-        <div class="help-item"><span class="help-num">2</span><strong>文件匹配</strong> — 日志文件名包含的关键字，用于快速筛选扫描范围</div>
-        <div class="help-item"><span class="help-num">3</span><strong>聚合字段</strong> — <code>context</code> 中用于分组的字段名，如 <code>task_id</code></div>
-        <div class="help-item"><span class="help-num">4</span><strong>聚合模式</strong> — 正则表达式，从日志内容提取聚合值（备选方案）</div>
-        <div class="help-item"><span class="help-num">5</span><strong>Grep 关键字</strong> — Shell grep 快速过滤的关键字，提升性能</div>
-        <div class="help-item"><span class="help-num">6</span><strong>阶段定义</strong> — 可选，对应 <code>context.stage</code>，详情页按阶段分组展示</div>
+        <div class="help-item"><span class="help-num">1</span><strong>日志通道</strong> — 对应日志 JSON 中 <code>channel</code> 字段值，如 <code>landing_page</code></div>
+        <div class="help-item"><span class="help-num">2</span><strong>聚合字段</strong> — <code>context</code> 中用于分组的字段名，如 <code>task_id</code>，同一值的日志会聚合为一条记录</div>
+        <div class="help-item"><span class="help-num">3</span><strong>聚合值前缀</strong> — 聚合字段值的固定前缀（如 <code>TASK-</code>），用于预筛选日志行提升扫描性能</div>
+        <div class="help-item"><span class="help-num">4</span><strong>阶段定义</strong> — 可选，对应 <code>context.stage</code>，详情页按阶段分组展示执行链路</div>
+        <div class="help-item"><span class="help-num">5</span><strong>成功阶段</strong> — 可选，指定哪个 stage 代表任务完成，用于标记聚合项状态为「已完成」</div>
     </div>
 </div>
 
@@ -264,8 +263,9 @@
                         <input class="fg-input" type="text" id="formIcon" placeholder="📋" style="text-align: center; font-size: 20px; padding: 7px;">
                     </div>
                     <div class="fg">
-                        <label class="fg-label">Grep 关键字</label>
-                        <input class="fg-input" type="text" id="formGrepPattern" placeholder="可选，加速日志扫描">
+                        <label class="fg-label">聚合值前缀</label>
+                        <input class="fg-input" type="text" id="formGrepPattern" placeholder="如 TASK-，用于快速过滤日志行">
+                        <div class="fg-hint">聚合字段值的固定前缀，如 <code>TASK-</code>，用于预筛选含有该关键字的日志行</div>
                     </div>
                 </div>
                 <div class="fg">
@@ -341,7 +341,34 @@
             <!-- 预览/校验结果 -->
             <div class="import-preview" id="importPreview"></div>
 
-            <div class="fg-hint" style="margin-top: 12px;">
+            <!-- 字段说明（可折叠） -->
+            <div style="margin-top: 14px;">
+                <button class="adv-toggle" type="button" onclick="this.classList.toggle('open'); document.getElementById('fieldRef').classList.toggle('open');">
+                    <span class="arrow">▶</span> 字段说明
+                </button>
+                <div class="adv-section" id="fieldRef">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px;">
+                        <thead>
+                            <tr style="background: #f5f5f7; text-align: left;">
+                                <th style="padding: 7px 10px; font-weight: 600; color: #1d1d1f; border-bottom: .5px solid #d1d1d6; width: 130px;">字段</th>
+                                <th style="padding: 7px 10px; font-weight: 600; color: #1d1d1f; border-bottom: .5px solid #d1d1d6; width: 40px;">必填</th>
+                                <th style="padding: 7px 10px; font-weight: 600; color: #1d1d1f; border-bottom: .5px solid #d1d1d6;">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody style="color: #444;">
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">name</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #FF3B30;">✱</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">显示名称，如「落地页任务」</td></tr>
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">log_channel</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #FF3B30;">✱</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">日志 JSON 中 <code style="background:#f0f2f5; padding:1px 4px; border-radius:3px;">channel</code> 字段的值</td></tr>
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">aggregate_field</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #FF3B30;">✱</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">context 中用于分组的字段名，如 <code style="background:#f0f2f5; padding:1px 4px; border-radius:3px;">task_id</code></td></tr>
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">icon</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #86868b;">—</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">Emoji 图标，默认 📋</td></tr>
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">grep_pattern</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #86868b;">—</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">聚合值的固定前缀，如 <code style="background:#f0f2f5; padding:1px 4px; border-radius:3px;">TASK-</code>，用于预筛选日志行提升性能</td></tr>
+                            <tr><td style="padding: 6px 10px; border-bottom: .5px solid #eee;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">stages</code></td><td style="padding: 6px 10px; border-bottom: .5px solid #eee; color: #86868b;">—</td><td style="padding: 6px 10px; border-bottom: .5px solid #eee;">阶段定义，对应 <code style="background:#f0f2f5; padding:1px 4px; border-radius:3px;">context.stage</code>，含 step/name/color</td></tr>
+                            <tr><td style="padding: 6px 10px;"><code style="background:#f0f2f5; padding:1px 5px; border-radius:3px; color:#764ba2;">success_stage</code></td><td style="padding: 6px 10px; color: #86868b;">—</td><td style="padding: 6px 10px;">成功阶段的 key，用于判断任务状态为「已完成」</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="fg-hint" style="margin-top: 10px;">
                 支持导入 JSON 数组（多个类型）或单个 JSON 对象。已存在的类型（相同 ID 或 mode）将被覆盖更新。
             </div>
         </div>

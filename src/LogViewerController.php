@@ -41,6 +41,15 @@ class LogViewerController
         }
     }
 
+    /**
+     * 获取当前路由基础路径
+     */
+    protected function getBasePath(): string
+    {
+        $requestUri = $this->request->getUri()->getPath();
+        return (string) preg_replace('/\/log_view.*$/', '/log_view', $requestUri);
+    }
+
     // ==================== 日志类型配置管理 ====================
 
     /**
@@ -50,8 +59,7 @@ class LogViewerController
     public function logTypeConfig(): PsrResponseInterface
     {
         $logTypes = $this->logTypeManager->getAll();
-        $requestUri = $this->request->getUri()->getPath();
-        $_basePath = preg_replace('/\/log_view.*$/', '/log_view', $requestUri);
+        $_basePath = $this->getBasePath();
 
         $availableChannels = $this->logTypeManager->scanAvailableChannels();
 
@@ -187,8 +195,7 @@ class LogViewerController
             $totalPage = $result['totalPage'];
         }
 
-        $requestUri = $this->request->getUri()->getPath();
-        $_basePath = preg_replace('/\/log_view.*$/', '/log_view', $requestUri);
+        $_basePath = $this->getBasePath();
 
         ob_start();
         include $this->viewPath . '/views/index.php';
@@ -208,7 +215,6 @@ class LogViewerController
         $search = $this->request->input('search', '');
         $aggregateId = $this->request->input('agg_id', '');
         $page = (int) $this->request->input('page', 1);
-        $limit = 20;
 
         $isAjax = $this->request->input('ajax') === '1'
             || $this->request->hasHeader('X-Requested-With');
@@ -235,8 +241,8 @@ class LogViewerController
             uasort($items, fn($a, $b) => strcmp($b['start_time'], $a['start_time']));
 
             $total = count($items);
-            $totalPage = (int) ceil($total / $limit);
-            $items = array_slice($items, ($page - 1) * $limit, $limit, true);
+            $totalPage = (int) ceil($total / $this->limit);
+            $items = array_slice($items, ($page - 1) * $this->limit, $this->limit, true);
         }
 
         if ($isAjax && empty($aggregateId)) {
@@ -249,8 +255,7 @@ class LogViewerController
             ]);
         }
 
-        $requestUri = $this->request->getUri()->getPath();
-        $_basePath = preg_replace('/\/log_view.*$/', '/log_view', $requestUri);
+        $_basePath = $this->getBasePath();
 
         ob_start();
         include $this->viewPath . '/views/aggregate-log.php';
@@ -485,10 +490,7 @@ class LogViewerController
 
             if ($log['level'] === 'error') {
                 $item['error_count']++;
-                $message = $log['message'];
-                if (strpos($message, '失败') !== false || strpos($message, '异常') !== false) {
-                    $item['status'] = 'failed';
-                }
+                $item['status'] = 'failed';
             }
 
             $stage = $log['stage'] ?? '';
@@ -519,13 +521,11 @@ class LogViewerController
         foreach ($logs as $log) {
             if ($log['level'] === 'error') {
                 $item['error_count']++;
+                $item['status'] = 'failed';
             }
             $stage = $log['context']['stage'] ?? '';
             if (!empty($successStage) && $stage === $successStage && $item['status'] !== 'failed') {
                 $item['status'] = 'success';
-            }
-            if ($log['level'] === 'error' && (strpos($log['message'], '失败') !== false || strpos($log['message'], '异常') !== false)) {
-                $item['status'] = 'failed';
             }
         }
 

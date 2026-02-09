@@ -27,7 +27,7 @@
     ?>
         <a href="?mode=<?= htmlspecialchars($__lt['mode']) ?>" class="<?= $__isActive ? 'active' : '' ?>"><?= htmlspecialchars(($__lt['icon'] ?? '📋') . ' ' . $__lt['name']) ?></a>
     <?php endforeach; ?>
-    <a href="<?= $_basePath ?>/config" style="margin-left: auto; background: #f0f0f0; color: #666; font-size: 13px;">⚙️ 配置</a>
+    <a href="<?= $_basePath ?>/config" style="margin-left: auto; background: #f0f0f0; color: #666; font-size: 13px;">⚙️ 类型管理</a>
 </div>
 
 <div style="padding: 0 20px 20px;">

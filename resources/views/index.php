@@ -20,7 +20,7 @@
     <?php if (!empty($logTypes)): foreach ($logTypes as $lt): ?>
         <a class="nav-link" href="?mode=<?= htmlspecialchars($lt['mode']) ?>"><?= htmlspecialchars(($lt['icon'] ?? '📋') . ' ' . $lt['name']) ?></a>
     <?php endforeach; endif; ?>
-    <a class="nav-link" href="<?= $_basePath ?>/config" style="margin-left: auto; background: #f0f0f0; color: #666; font-size: 13px;">⚙️ 配置</a>
+    <a class="nav-link" href="<?= $_basePath ?>/config" style="margin-left: auto; background: #f0f0f0; color: #666; font-size: 13px;">⚙️ 类型管理</a>
 </div>
 
 <div class="main-container">
