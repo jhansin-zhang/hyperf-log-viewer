@@ -43,9 +43,24 @@ class LogViewerController
 
     /**
      * 获取当前路由基础路径
+     * 优先使用配置值，支持反向代理场景；其次尝试从常见代理头中获取原始路径
      */
     protected function getBasePath(): string
     {
+        // 1. 优先使用配置
+        $configured = (string) $this->config->get('log_viewer.base_path', '');
+        if ($configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        // 2. 尝试从代理头获取原始完整路径
+        $originalUri = $this->request->getHeaderLine('X-Original-URI')
+            ?: $this->request->getHeaderLine('X-Forwarded-Prefix');
+        if (!empty($originalUri)) {
+            return (string) preg_replace('/\/log_view.*$/', '/log_view', $originalUri);
+        }
+
+        // 3. 回退：从请求 URI 推断
         $requestUri = $this->request->getUri()->getPath();
         return (string) preg_replace('/\/log_view.*$/', '/log_view', $requestUri);
     }
