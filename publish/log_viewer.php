@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
     // 路由基础路径（当通过反向代理访问时，需要设置为完整前缀路径，如 '/middle/material-plus/log_view'）
     // 留空则自动从请求 URI 中推断
-    'base_path' => '/middle/material-plus/log_view',
+    'base_path' => '',
 
     // 日志文件目录
     'log_path' => BASE_PATH . '/runtime/logs',
